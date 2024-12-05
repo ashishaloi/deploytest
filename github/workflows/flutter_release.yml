@@ -1,0 +1,60 @@
+name: Flutter APK Release to Google Drive
+
+on:
+  push:
+    branches:
+      - main # Update to your release branch
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Set up Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      # Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Build APK
+      - name: Build Flutter APK
+        run: flutter build apk --release
+
+      # Log APK location
+      - name: Verify APK existence
+        run: ls -l build/app/outputs/flutter-apk/
+
+      # Set up Ruby for Fastlane
+      - name: Set up Ruby for Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+
+      # Install Fastlane
+      - name: Install Fastlane
+        run: bundle install
+        working-directory: android
+
+      # Add Google Drive credentials
+      - name: Add Google Drive credentials
+        run: |
+          if [ -z "${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}" ]; then
+            echo "Missing Google Drive credentials!"
+            exit 1
+          fi
+          echo "${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}" > android/credentials.json
+
+      # Run Fastlane
+      - name: Run Fastlane
+        run: bundle exec fastlane release
+        working-directory: android

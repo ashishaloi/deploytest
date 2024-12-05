@@ -1,38 +1,27 @@
-# This file contains the fastlane.tools configuration
-# You can find the documentation at https://docs.fastlane.tools
-#
-# For a list of all available actions, check out
-#
-#     https://docs.fastlane.tools/actions
-#
-# For a list of all available plugins, check out
-#
-#     https://docs.fastlane.tools/plugins/available-plugins
-#
-
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
+require 'google_drive'
 
 default_platform(:android)
 
 platform :android do
-  desc "Runs all the tests"
-  lane :test do
-    gradle(task: "test")
-  end
+  desc "Build and upload APK to Google Drive"
+  lane :release do
+    # Build the Flutter APK
+    sh "flutter build apk --release"
 
-  desc "Submit a new Beta Build to Crashlytics Beta"
-  lane :beta do
-    gradle(task: "clean assembleRelease")
-    crashlytics
-  
-    # sh "your_script.sh"
-    # You can also use other beta testing services here
-  end
+    # Path to the built APK
+    apk_path = "../build/app/outputs/flutter-apk/app-release.apk"
 
-  desc "Deploy a new version to the Google Play"
-  lane :deploy do
-    gradle(task: "clean assembleRelease")
-    upload_to_play_store
+    # Google Drive Folder Configuration
+    session = GoogleDrive::Session.from_service_account_key(json_key_file)
+
+    drive_folder_name = "FlutterAPKUploads" # Update with your folder name
+    folder = session.collection_by_title(drive_folder_name) ||
+             session.root_collection.create_subcollection(drive_folder_name)
+
+    # Upload APK to Google Drive
+    file_name = "app-release-#{Time.now.strftime('%Y%m%d%H%M%S')}.apk"
+    folder.upload_from_file(apk_path, file_name, convert: false)
+
+    UI.success("APK uploaded to Google Drive successfully!")
   end
 end
