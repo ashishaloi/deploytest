@@ -1,0 +1,80 @@
+name: Flutter APK Release to Google Drive
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install Java 17
+      - name: Install Java 17
+        run: |
+          sudo apt-get update
+          sudo apt-get install openjdk-17-jdk -y
+          sudo update-alternatives --config java  # Set Java 17 as the default
+          java -version  # Verify Java version
+
+      # Set JAVA_HOME to Java 17
+      - name: Set JAVA_HOME to Java 17
+        run: |
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
+          java -version  # Confirm Java 17 is used
+
+      # Set up Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.24.2
+
+      # Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Clean Gradle cache (optional, if issues persist)
+      - name: Clean Gradle Cache
+        run: ./gradlew clean
+
+      # Build APK
+      - name: Build Flutter APK
+        run: flutter build apk --release
+
+      # Log APK location
+      - name: Verify APK existence
+        run: ls -l build/app/outputs/flutter-apk/
+
+      # Set up Ruby for Fastlane
+      - name: Set up Ruby for Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+
+      # Install Fastlane
+      - name: Install Fastlane
+        run: bundle install
+        working-directory: android
+
+      # Add Google Drive credentials
+      - name: Add Google Drive credentials
+        run: |
+          if [ -z "${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}" ]; then
+            echo "Missing Google Drive credentials!"
+            exit 1
+          fi
+          echo "${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}" > android/credentials.json
+
+      # Run Fastlane to upload APK to Google Drive
+      - name: Run Fastlane
+        run: bundle exec fastlane release
+        working-directory: android
