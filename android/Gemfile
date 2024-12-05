@@ -1,5 +1,7 @@
-source "https://rubygems.org"
+source 'https://rubygems.org'
 
-gem "fastlane"
-gem 'google_drive'
-
+gem 'fastlane'
+gem 'googleauth', '~> 0.9.0'  # Ensure googleauth version is compatible
+gem 'google_drive', '~> 3.0.7'  # The version of google_drive you're using
+gem 'google-apis-sheets_v4', '~> 0.7.0'  # If using Google Sheets API
+gem 'google-apis-core', '~> 0.4.0'  # For API compatibility
